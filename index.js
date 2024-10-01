@@ -1,17 +1,18 @@
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
+const Tesseract = require('tesseract.js');
 const path = require('path');
 const { PythonShell } = require('python-shell');
 const cors = require('cors');
-const port = 5000;
+const port = 8000;
 
 const app = express();
 
 // Middleware CORS
 app.use(cors());
 
-// La configuration du stockage des fichiers avec Multer
+// Configuration du stockage des fichiers avec Multer (diskStorage)
 let storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, 'upload');
@@ -31,6 +32,11 @@ const deleteFilesInDirectory = (directory) => {
     fs.readdir(directory, (err, files) => {
         if (err) throw err;
 
+        if (files.length === 0) {
+            console.log('Aucun fichier à supprimer.');
+            return;
+        }
+
         for (const file of files) {
             fs.unlink(path.join(directory, file), (err) => {
                 if (err) throw err;
@@ -40,8 +46,15 @@ const deleteFilesInDirectory = (directory) => {
     });
 };
 
+// Fonction pour planifier la suppression des fichiers
+const scheduleFileDeletion = (directory, delay) => {
+    setTimeout(() => {
+        deleteFilesInDirectory(directory);
+    }, delay);
+};
+
 // Routes
-app.post('/conversion', upload.single('pdf'), (req, res) => {
+app.post('/pdftoword', upload.single('pdf'), (req, res) => {
     if (!req.file) {
         return res.status(400).send('Aucun fichier téléchargé.');
     }
@@ -76,34 +89,49 @@ app.post('/conversion', upload.single('pdf'), (req, res) => {
 
         console.log('Script Python terminé avec le code :', code, 'et le signal :', signal);
 
-        // Renomme le fichier converti
         fs.rename(docxFilePath, renamedFilePath, (err) => {
             if (err) {
                 console.error('Erreur lors du renommage du fichier :', err);
                 return res.status(500).send('Erreur lors du renommage du fichier.');
             }
 
-            // Télécharge le fichier DOCX converti avec le nouveau nom
             res.download(renamedFilePath, (err) => {
                 if (err) {
                     console.error('Erreur lors du téléchargement du fichier DOCX :', err);
                     return res.status(500).send('Erreur lors du téléchargement du fichier DOCX.');
                 }
 
-                // Supprime tous les fichiers après 60 secondes
-                
-                setTimeout(() => {
-                    deleteFilesInDirectory('upload');
-                }, 60000); 
+                scheduleFileDeletion('upload', 60000);
             });
         });
     });
 });
 
-// Serveur les fichiers statiques dans le répertoire `upload`
+// imageToPdf
+
+app.post('/imgtodoc', upload.single('image'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).send('Aucun fichier téléchargé.');
+    }
+
+    Tesseract.recognize(
+        req.file.path, 
+        'fra', 'En',
+        {
+            logger: info => console.log(info), 
+        }
+    ).then(({ data: { text } }) => {
+        res.json({ text });
+
+        scheduleFileDeletion('upload', 60000);
+    }).catch(err => {
+        console.error(err);
+        res.status(500).send('Erreur lors du traitement de l\'image.');
+    });
+});
+
 app.use('/upload', express.static(path.join(__dirname, 'upload')));
 
-// Lancement du serveur
 app.listen(port, () => {
     console.log(`L'application tourne sur le port localhost:${port}`);
 });
