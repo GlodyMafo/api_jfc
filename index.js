@@ -54,6 +54,10 @@ const scheduleFileDeletion = (directory, delay) => {
 };
 
 // Routes
+
+
+app.get("/", (req, res) => res.send("Express on Vercel"));
+
 app.post('/pdftoword', upload.single('pdf'), (req, res) => {
     if (!req.file) {
         return res.status(400).send('Aucun fichier téléchargé.');
