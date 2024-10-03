@@ -157,7 +157,6 @@ const multer = require('multer');
 const fs = require('fs');
 const Tesseract = require('tesseract.js');
 const path = require('path');
-const { PythonShell } = require('python-shell');
 const cors = require('cors');
 const port = 8000;
 
@@ -315,3 +314,4 @@ app.use('/upload', express.static(path.join(__dirname, 'upload')));
 app.listen(port, () => {
     console.log(`L'application tourne sur le port localhost:${port}`);
 });
+
