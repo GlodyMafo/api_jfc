@@ -67,7 +67,7 @@ const scheduleFileDeletion = (directory, delay) => {
 
 // Routes
 
-app.get("/", (req, res) => res.send("Express on Vercel"));
+app.get("/", (req, res) => res.send("Josephine file converter api"));
 
 app.post('/pdftoword', upload.single('pdf'), (req, res) => {
     if (!req.file) {
