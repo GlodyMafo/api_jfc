@@ -27,10 +27,13 @@ let upload = multer({
     storage: storage
 });
 
-// Fonction pour supprimer tous les fichiers dans un répertoire
+// Fonction pour supprimer tous les fichiers dans un répertoire sauf 'stay'
 const deleteFilesInDirectory = (directory) => {
     fs.readdir(directory, (err, files) => {
-        if (err) throw err;
+        if (err) {
+            console.error('Erreur lors de la lecture du répertoire :', err);
+            return;
+        }
 
         if (files.length === 0) {
             console.log('Aucun fichier à supprimer.');
@@ -38,8 +41,17 @@ const deleteFilesInDirectory = (directory) => {
         }
 
         for (const file of files) {
+            // Vérifier si le fichier est 'stay'
+            if (file === 'stay' || file === 'stay' + path.extname(file)) {
+                console.log(`Fichier exempté de suppression : ${file}`);
+                continue; // Passer au fichier suivant
+            }
+
             fs.unlink(path.join(directory, file), (err) => {
-                if (err) throw err;
+                if (err) {
+                    console.error(`Erreur lors de la suppression du fichier ${file} :`, err);
+                    return;
+                }
                 console.log(`Fichier supprimé : ${file}`);
             });
         }
@@ -54,7 +66,6 @@ const scheduleFileDeletion = (directory, delay) => {
 };
 
 // Routes
-
 
 app.get("/", (req, res) => res.send("Express on Vercel"));
 
@@ -105,7 +116,7 @@ app.post('/pdftoword', upload.single('pdf'), (req, res) => {
                     return res.status(500).send('Erreur lors du téléchargement du fichier DOCX.');
                 }
 
-                scheduleFileDeletion('upload', 60000);
+                scheduleFileDeletion('upload', 60000); // Planifie la suppression après 60 secondes
             });
         });
     });
@@ -127,7 +138,7 @@ app.post('/imgtodoc', upload.single('image'), (req, res) => {
     ).then(({ data: { text } }) => {
         res.json({ text });
 
-        scheduleFileDeletion('upload', 60000);
+        scheduleFileDeletion('upload', 60000); // Planifie la suppression après 60 secondes
     }).catch(err => {
         console.error(err);
         res.status(500).send('Erreur lors du traitement de l\'image.');
