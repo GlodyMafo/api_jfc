@@ -1,185 +1,25 @@
-// const express = require('express');
-// const multer = require('multer');
-// const fs = require('fs');
-// const Tesseract = require('tesseract.js');
-// const path = require('path');
-// const { PythonShell } = require('python-shell');
-// const cors = require('cors');
-// const port = 8000;
-
-// const app = express();
-
-// // Middleware CORS
-// app.use(cors());
-
-// // Configuration du stockage des fichiers avec Multer (diskStorage)
-// let storage = multer.diskStorage({
-//     destination: function (req, file, cb) {
-//         cb(null, 'upload');
-//     },
-//     filename: function (req, file, cb) {
-//         cb(null, Date.now() + path.extname(file.originalname));
-//     }
-// });
-
-// // Initialisation de Multer pour gérer les fichiers
-// let upload = multer({
-//     storage: storage
-// });
-
-// // Fonction pour supprimer tous les fichiers dans un répertoire sauf 'stay'
-// const deleteFilesInDirectory = (directory) => {
-//     fs.readdir(directory, (err, files) => {
-//         if (err) {
-//             console.error('Erreur lors de la lecture du répertoire :', err);
-//             return;
-//         }
-
-//         if (files.length === 0) {
-//             console.log('Aucun fichier à supprimer.');
-//             return;
-//         }
-
-//         for (const file of files) {
-//             // Vérifier si le fichier est 'stay'
-//             if (file === 'stay' || file === 'stay' + path.extname(file)) {
-//                 console.log(`Fichier exempté de suppression : ${file}`);
-//                 continue; // Passer au fichier suivant
-//             }
-
-//             fs.unlink(path.join(directory, file), (err) => {
-//                 if (err) {
-//                     console.error(`Erreur lors de la suppression du fichier ${file} :`, err);
-//                     return;
-//                 }
-//                 console.log(`Fichier supprimé : ${file}`);
-//             });
-//         }
-//     });
-// };
-
-// // Fonction pour planifier la suppression des fichiers
-// const scheduleFileDeletion = (directory, delay) => {
-//     setTimeout(() => {
-//         deleteFilesInDirectory(directory);
-//     }, delay);
-// };
-
-// // Routes
-
-// app.get("/", (req, res) => res.send("Josephine file converter api"));
-
-// app.post('/pdftoword', upload.single('pdf'), (req, res) => {
-//     if (!req.file) {
-//         return res.status(400).send('Aucun fichier téléchargé.');
-//     }
-
-//     const originalFileName = path.basename(req.file.originalname, path.extname(req.file.originalname));
-//     const docxFilePath = req.file.path.replace('.pdf', '.docx');
-//     const renamedFilePath = path.join('upload', `${originalFileName} converted_by_JosephineFC.docx`);
-
-//     // Exécute le script Python pour la conversion
-//     const pyshell = new PythonShell('convertisseur.py', {
-//         mode: 'text',
-//         pythonPath: 'python',
-//         scriptPath: __dirname,
-//         args: [req.file.path]
-//     });
-
-//     // Gestion des messages et erreurs de python
-//     pyshell.on('message', (message) => {
-//         console.log('Message du script Python :', message);
-//     });
-
-//     pyshell.on('error', (error) => {
-//         console.error('Erreur d\'exécution Python :', error);
-//         return res.status(500).send('Erreur lors de l\'exécution du script Python.');
-//     });
-
-//     pyshell.end((err, code, signal) => {
-//         if (err) {
-//             console.error('Erreur d\'exécution finale Python :', err);
-//             return res.status(500).send('Erreur lors de la conversion.');
-//         }
-
-//         console.log('Script Python terminé avec le code :', code, 'et le signal :', signal);
-
-//         fs.rename(docxFilePath, renamedFilePath, (err) => {
-//             if (err) {
-//                 console.error('Erreur lors du renommage du fichier :', err);
-//                 return res.status(500).send('Erreur lors du renommage du fichier.');
-//             }
-
-//             res.download(renamedFilePath, (err) => {
-//                 if (err) {
-//                     console.error('Erreur lors du téléchargement du fichier DOCX :', err);
-//                     return res.status(500).send('Erreur lors du téléchargement du fichier DOCX.');
-//                 }
-
-//                 scheduleFileDeletion('upload', 60000); // Planifie la suppression après 60 secondes
-//             });
-//         });
-//     });
-// });
-
-// // imageToPdf
-
-// app.post('/imgtodoc', upload.single('image'), (req, res) => {
-//     if (!req.file) {
-//         return res.status(400).send('Aucun fichier téléchargé.');
-//     }
-
-//     Tesseract.recognize(
-//         req.file.path, 
-//         'fra', 'En',
-//         {
-//             logger: info => console.log(info), 
-//         }
-//     ).then(({ data: { text } }) => {
-//         res.json({ text });
-
-//         scheduleFileDeletion('upload', 60000); // Planifie la suppression après 60 secondes
-//     }).catch(err => {
-//         console.error(err);
-//         res.status(500).send('Erreur lors du traitement de l\'image.');
-//     });
-// });
-
-// app.use('/upload', express.static(path.join(__dirname, 'upload')));
-
-// app.listen(port, () => {
-//     console.log(`L'application tourne sur le port localhost:${port}`);
-// });
-
-
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
 const Tesseract = require('tesseract.js');
 const path = require('path');
+const { PythonShell } = require('python-shell');
 const cors = require('cors');
-// const corsConfig = {
-//     origin: "*",
-//     credential : true,
-//     methods : ["GET","POST","PUT","DELETE"]
-// }
-// app.options("",cors(corsConfig))
-const port = 8000;
 
+const port = 8000;
 const app = express();
 
 // Middleware CORS
 app.use(cors());
 
-
-// Assurez-vous que le répertoire 'upload' existe
+// Ensure 'upload' directory exists
 const uploadDir = path.join(__dirname, 'upload');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Configuration du stockage des fichiers avec Multer (diskStorage)
-let storage = multer.diskStorage({
+// Multer storage configuration
+const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, 'upload');
     },
@@ -188,43 +28,55 @@ let storage = multer.diskStorage({
     }
 });
 
-// Initialisation de Multer pour gérer les fichiers
-let upload = multer({
-    storage: storage
+// File filter to validate file types
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Unsupported file type'), false);
+    }
+};
+
+// Initialize Multer with storage, file filter, and size limits
+const upload = multer({
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: { fileSize: 10 * 1024 * 1024 } // 10 MB limit
 });
 
-// Fonction pour supprimer tous les fichiers dans un répertoire sauf 'stay'
+// Function to delete all files in a directory except 'stay'
 const deleteFilesInDirectory = (directory) => {
     fs.readdir(directory, (err, files) => {
         if (err) {
-            console.error('Erreur lors de la lecture du répertoire :', err);
+            console.error('Error reading directory:', err);
             return;
         }
 
         if (files.length === 0) {
-            console.log('Aucun fichier à supprimer.');
+            console.log('No files to delete.');
             return;
         }
 
-        for (const file of files) {
-            // Vérifier si le fichier est 'stay'
-            if (file === 'stay' || file === 'stay' + path.extname(file)) {
-                console.log(`Fichier exempté de suppression : ${file}`);
-                continue; // Passer au fichier suivant
+        files.forEach(file => {
+            // Exempt 'stay' files
+            if (file === 'stay' || file === `stay${path.extname(file)}`) {
+                console.log(`File exempted from deletion: ${file}`);
+                return;
             }
 
             fs.unlink(path.join(directory, file), (err) => {
                 if (err) {
-                    console.error(`Erreur lors de la suppression du fichier ${file} :`, err);
+                    console.error(`Error deleting file ${file}:`, err);
                     return;
                 }
-                console.log(`Fichier supprimé : ${file}`);
+                console.log(`File deleted: ${file}`);
             });
-        }
+        });
     });
 };
 
-// Fonction pour planifier la suppression des fichiers
+// Function to schedule file deletion after a delay
 const scheduleFileDeletion = (directory, delay) => {
     setTimeout(() => {
         deleteFilesInDirectory(directory);
@@ -233,92 +85,106 @@ const scheduleFileDeletion = (directory, delay) => {
 
 // Routes
 
-app.get("/", (req, res) => res.send("Josephine file converter api"));
+app.get("/", (req, res) => res.send("Josephine File Converter API"));
 
+// PDF to Word Conversion
 app.post('/pdftoword', upload.single('pdf'), (req, res) => {
     if (!req.file) {
-        console.error('Aucun fichier téléchargé.');
-        return res.status(400).send('Aucun fichier téléchargé.');
+        console.error('No file uploaded.');
+        return res.status(400).send('No file uploaded.');
     }
 
     const originalFileName = path.basename(req.file.originalname, path.extname(req.file.originalname));
-    const docxFilePath = req.file.path.replace('.pdf', '.docx');
-    const renamedFilePath = path.join('upload', `${originalFileName} converted_by_JosephineFC.docx`);
+    const parsedPath = path.parse(req.file.path);
+    const docxFilePath = path.join(parsedPath.dir, `${parsedPath.name}.docx`);
+    const renamedFilePath = path.join('upload', `${originalFileName}_converted_by_JosephineFC.docx`);
 
-    // Exécute le script Python pour la conversion
+    // Execute Python script for conversion
     const pyshell = new PythonShell('convertisseur.py', {
         mode: 'text',
-        pythonPath: 'python',
+        pythonPath: 'python', // Ensure 'python' is in PATH or provide full path
         scriptPath: __dirname,
-        args: [req.file.path]
+        args: [req.file.path, docxFilePath]
     });
 
-    // Gestion des messages et erreurs de python
+    let pythonErrorOccurred = false;
+
     pyshell.on('message', (message) => {
-        console.log('Message du script Python :', message);
+        console.log('Python script message:', message);
+    });
+
+    pyshell.on('stderr', (stderr) => {
+        console.error('Python script stderr:', stderr);
     });
 
     pyshell.on('error', (error) => {
-        console.error('Erreur d\'exécution Python :', error);
-        return res.status(500).send('Erreur lors de l\'exécution du script Python.');
+        console.error('Python execution error:', error);
+        pythonErrorOccurred = true;
+        return res.status(500).send('Error executing Python script.');
     });
 
     pyshell.end((err, code, signal) => {
-        if (err) {
-            console.error('Erreur d\'exécution finale Python :', err);
-            return res.status(500).send('Erreur lors de la conversion.');
+        if (err || pythonErrorOccurred) {
+            console.error('Final Python execution error:', err);
+            return res.status(500).send('Error during conversion.');
         }
 
-        console.log('Script Python terminé avec le code :', code, 'et le signal :', signal);
+        console.log(`Python script finished with code ${code} and signal ${signal}`);
 
+        // Rename the converted file
         fs.rename(docxFilePath, renamedFilePath, (err) => {
             if (err) {
-                console.error('Erreur lors du renommage du fichier :', err);
-                return res.status(500).send('Erreur lors du renommage du fichier.');
+                console.error('Error renaming file:', err);
+                return res.status(500).send('Error renaming the file.');
             }
 
+            // Send the converted file as a download
             res.download(renamedFilePath, (err) => {
                 if (err) {
-                    console.error('Erreur lors du téléchargement du fichier DOCX :', err);
-                    return res.status(500).send('Erreur lors du téléchargement du fichier DOCX.');
+                    console.error('Error downloading the DOCX file:', err);
+                    return res.status(500).send('Error downloading the DOCX file.');
                 }
 
-                scheduleFileDeletion('upload', 60000); // Planifie la suppression après 60 secondes
+                // Schedule deletion after 60 seconds
+                scheduleFileDeletion('upload', 60000);
             });
         });
     });
 });
 
-// imageToDoc
-
-app.post('/imgtodoc', upload.single('image'), (req, res) => {
-    if (!req.file) {
-        console.error('Aucun fichier téléchargé.');
-        return res.status(400).send('Aucun fichier téléchargé.');
-    }
-
-    console.log('Fichier reçu :', req.file.path);
-
-    Tesseract.recognize(
-        req.file.path, 
-        'fra+eng', // Langues combinées correctement
-        {
-            logger: info => console.log(info), 
+// Image to Text (OCR) Conversion
+app.post('/imgtodoc', upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) {
+            console.error('No file uploaded.');
+            return res.status(400).send('No file uploaded.');
         }
-    ).then(({ data: { text } }) => {
-        console.log('Texte extrait :', text);
+
+        console.log('Received file:', req.file.path);
+
+        const { data: { text } } = await Tesseract.recognize(
+            req.file.path,
+            'fra+eng', // Combined languages
+            {
+                logger: info => console.log(info),
+            }
+        );
+
+        console.log('Extracted text:', text);
         res.json({ text });
 
-        scheduleFileDeletion('upload', 60000); // Planifie la suppression après 60 secondes
-    }).catch(err => {
-        console.error('Erreur lors du traitement de l\'image :', err);
-        res.status(500).send('Erreur lors du traitement de l\'image.');
-    });
+        // Schedule deletion after 60 seconds
+        scheduleFileDeletion('upload', 60000);
+    } catch (err) {
+        console.error('Error processing image:', err);
+        res.status(500).send('Error processing the image.');
+    }
 });
 
+// Serve uploaded files statically (optional)
 app.use('/upload', express.static(path.join(__dirname, 'upload')));
 
+// Start the server
 app.listen(port, () => {
-    console.log(`L'application tourne sur le port localhost:${port}`);
+    console.log(`Server running at http://localhost:${port}`);
 });
-
