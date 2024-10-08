@@ -158,12 +158,12 @@ const fs = require('fs');
 const Tesseract = require('tesseract.js');
 const path = require('path');
 const cors = require('cors');
-const corsConfig = {
-    origin: "*",
-    credential : true,
-    methods : ["GET","POST","PUT","DELETE"]
-}
-app.options("",cors(corsConfig))
+// const corsConfig = {
+//     origin: "*",
+//     credential : true,
+//     methods : ["GET","POST","PUT","DELETE"]
+// }
+// app.options("",cors(corsConfig))
 const port = 8000;
 
 const app = express();
