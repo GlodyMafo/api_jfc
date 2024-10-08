@@ -158,12 +158,19 @@ const fs = require('fs');
 const Tesseract = require('tesseract.js');
 const path = require('path');
 const cors = require('cors');
+const corsConfig = {
+    origin: "*",
+    credential : true,
+    methods : ["GET","POST","PUT","DELETE"]
+}
+app.options("",cors(corsConfig))
 const port = 8000;
 
 const app = express();
 
 // Middleware CORS
 app.use(cors());
+
 
 // Assurez-vous que le répertoire 'upload' existe
 const uploadDir = path.join(__dirname, 'upload');
