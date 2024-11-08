@@ -1,152 +1,204 @@
+// const express = require('express');
+// const cors = require('cors');
+// const multer = require('multer');
+// const fs = require('fs');
+// const path = require('path');
+// const axios = require('axios');
+// const FormData = require('form-data');
+// const Tesseract = require('tesseract.js');
+
+// const app = express();
+// const port = 8000; // Définir le port de l'application
+// app.use(cors());
+
+// // S'assurer que le dossier upload existe
+// const uploadDir = 'upload';
+// if (!fs.existsSync(uploadDir)) {
+//     fs.mkdirSync(uploadDir);
+// }
+
+// // Configuration de multer
+// let storage = multer.diskStorage({
+//     destination: function (req, file, cb) {
+//         cb(null, uploadDir); // Utiliser la variable uploadDir
+//     },
+//     filename: function (req, file, cb) {
+//         cb(null, Date.now() + path.extname(file.originalname));
+//     }
+// });
+
+// let upload = multer({ storage: storage });
+
+// // Route pour la conversion PDF vers Word
+// app.post('/pdftoword', upload.single('pdf'), async (req, res) => {
+//     if (!req.file) {
+//         return res.status(400).send('Aucun fichier téléchargé.');
+//     }
+    
+//     console.log(`Fichier PDF téléchargé : ${req.file.path}`); // Log du chemin du fichier
+
+//     try {
+//         const formData = new FormData();
+//         formData.append('file', fs.createReadStream(req.file.path));
+
+//         const response = await axios.post('http://localhost:8001/convert', formData, {
+//             headers: {
+//                 ...formData.getHeaders(),
+//             },
+//         });
+
+//         const docxFileName = response.data.docx_file.split('/').pop(); // Récupérer uniquement le nom du fichier
+//         const docxFilePath = path.join(__dirname, './Fast_API_JC', docxFileName); // Assurez-vous que le chemin est correct
+
+//         res.download(docxFilePath, (err) => {
+//             if (err) {
+//                 console.error('Erreur lors du téléchargement du fichier DOCX :', err);
+//                 return res.status(500).send('Erreur lors du téléchargement du fichier DOCX.');
+//             }
+//         });
+//     } catch (error) {
+//         console.error('Erreur lors de l\'appel à l\'API FastAPI :', error);
+//         res.status(500).send('Erreur lors de la conversion du fichier PDF en DOCX.');
+//     }
+// });
+
+// // Route pour la conversion d'image en texte
+// app.post('/imgtodoc', upload.single('image'), (req, res) => {
+//     if (!req.file) {
+//         return res.status(400).send('Aucun fichier téléchargé.');
+//     }
+
+//     console.log(`Image téléchargée : ${req.file.path}`); // Log du chemin de l'image
+
+//     Tesseract.recognize(
+//         req.file.path, 
+//         'fra', 'En',
+//         {
+//             logger: info => console.log(info), 
+//         }
+//     ).then(({ data: { text } }) => {
+//         res.json({ text });
+//     }).catch(err => {
+//         console.error(err);
+//         res.status(500).send('Erreur lors du traitement de l\'image.');
+//     });
+// });
+
+// // Servir les fichiers statiques dans le répertoire 'upload'
+// app.use('/upload', express.static(path.join(__dirname, uploadDir)));
+
+// // Lancer le serveur
+// app.listen(port, () => {
+//     console.log(`L'application tourne sur le port localhost:${port}`);
+// });
+
+
 const express = require('express');
+const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
-const Tesseract = require('tesseract.js');
 const path = require('path');
-const { PythonShell } = require('python-shell');
-const cors = require('cors');
-const port = 8000;
+const axios = require('axios');
+const FormData = require('form-data');
 
 const app = express();
-
-// Middleware CORS
+const port = 8000;
 app.use(cors());
 
-// Configuration du stockage des fichiers avec Multer (diskStorage)
+
+const uploadDir = 'uploads';
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir);
+}
+
+// Multer Config
 let storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'upload');
+        cb(null, uploadDir); 
     },
     filename: function (req, file, cb) {
         cb(null, Date.now() + path.extname(file.originalname));
     }
 });
 
-// Initialisation de Multer pour gérer les fichiers
-let upload = multer({
-    storage: storage
-});
+let upload = multer({ storage: storage });
 
-// Fonction pour supprimer tous les fichiers dans un répertoire sauf 'stay'
-const deleteFilesInDirectory = (directory) => {
-    fs.readdir(directory, (err, files) => {
+// Deletion function exept stay file
+const deleteFilesExceptStay = () => {
+    fs.readdir(uploadDir, (err, files) => {
         if (err) {
-            console.error('Erreur lors de la lecture du répertoire :', err);
+            // console.error('Erreur lors de la lecture du dossier :', err);
             return;
         }
 
-        if (files.length === 0) {
-            console.log('Aucun fichier à supprimer.');
-            return;
-        }
+        files.forEach(file => {
+            const filePath = path.join(uploadDir, file);
 
-        for (const file of files) {
-            // Vérifier si le fichier est 'stay'
-            if (file === 'stay' || file === 'stay' + path.extname(file)) {
-                console.log(`Fichier exempté de suppression : ${file}`);
-                continue; // Passer au fichier suivant
+            // Saving Only "stay.png"
+            if (file !== 'stay.png' && fs.lstatSync(filePath).isFile()) {
+                fs.unlink(filePath, (err) => {
+                    if (err) {
+                        // console.error(`Erreur lors de la suppression du fichier ${file}:`, err);
+                    } else {
+                        // console.log(`Fichier supprimé : ${file}`);
+                    }
+                });
             }
-
-            fs.unlink(path.join(directory, file), (err) => {
-                if (err) {
-                    console.error(`Erreur lors de la suppression du fichier ${file} :`, err);
-                    return;
-                }
-                console.log(`Fichier supprimé : ${file}`);
-            });
-        }
-    });
-};
-
-// Fonction pour planifier la suppression des fichiers
-const scheduleFileDeletion = (directory, delay) => {
-    setTimeout(() => {
-        deleteFilesInDirectory(directory);
-    }, delay);
-};
-
-// Routes
-
-app.get("/", (req, res) => res.send("Josephine file converter api"));
-
-app.post('/pdftoword', upload.single('pdf'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).send('Aucun fichier téléchargé.');
-    }
-
-    const originalFileName = path.basename(req.file.originalname, path.extname(req.file.originalname));
-    const docxFilePath = req.file.path.replace('.pdf', '.docx');
-    const renamedFilePath = path.join('upload', `${originalFileName} converted_by_JosephineFC.docx`);
-
-    // Exécute le script Python pour la conversion
-    const pyshell = new PythonShell('convertisseur.py', {
-        mode: 'text',
-        pythonPath: 'python',
-        scriptPath: __dirname,
-        args: [req.file.path]
-    });
-
-    // Gestion des messages et erreurs de python
-    pyshell.on('message', (message) => {
-        console.log('Message du script Python :', message);
-    });
-
-    pyshell.on('error', (error) => {
-        console.error('Erreur d\'exécution Python :', error);
-        return res.status(500).send('Erreur lors de l\'exécution du script Python.');
-    });
-
-    pyshell.end((err, code, signal) => {
-        if (err) {
-            console.error('Erreur d\'exécution finale Python :', err);
-            return res.status(500).send('Erreur lors de la conversion.');
-        }
-
-        console.log('Script Python terminé avec le code :', code, 'et le signal :', signal);
-
-        fs.rename(docxFilePath, renamedFilePath, (err) => {
-            if (err) {
-                console.error('Erreur lors du renommage du fichier :', err);
-                return res.status(500).send('Erreur lors du renommage du fichier.');
-            }
-
-            res.download(renamedFilePath, (err) => {
-                if (err) {
-                    console.error('Erreur lors du téléchargement du fichier DOCX :', err);
-                    return res.status(500).send('Erreur lors du téléchargement du fichier DOCX.');
-                }
-
-                scheduleFileDeletion('upload', 60000); // Planifie la suppression après 60 secondes
-            });
         });
     });
-});
+};
 
-// imageToPdf
-
-app.post('/imgtodoc', upload.single('image'), (req, res) => {
+// Route pour la conversion PDF vers Word
+app.post('/pdftoword', upload.single('pdf'), async (req, res) => {
     if (!req.file) {
         return res.status(400).send('Aucun fichier téléchargé.');
     }
 
-    Tesseract.recognize(
-        req.file.path, 
-        'fra', 'En',
-        {
-            logger: info => console.log(info), 
-        }
-    ).then(({ data: { text } }) => {
-        res.json({ text });
+    // console.log(`Fichier PDF téléchargé : ${req.file.path}`); 
 
-        scheduleFileDeletion('upload', 60000); // Planifie la suppression après 60 secondes
-    }).catch(err => {
-        console.error(err);
-        res.status(500).send('Erreur lors du traitement de l\'image.');
-    });
+    try {
+        const formData = new FormData();
+        formData.append('file', fs.createReadStream(req.file.path));
+
+        // Converting file with my python server
+        const response = await axios.post('http://localhost:8001/convert', formData, {
+            headers: {
+                ...formData.getHeaders(),
+            },
+            responseType: 'json', 
+        });
+
+        // Récupérer l'URL du fichier DOCX depuis la réponse
+        const docxFileUrl = response.data.docx_file;
+        // console.log('Fichier DOCX disponible à :', docxFileUrl);
+
+        // Récupérer le fichier DOCX généré depuis FastAPI
+        const docxResponse = await axios.get(`http://localhost:8001${docxFileUrl}`, {
+            responseType: 'stream', // Pour traiter la réponse comme un flux binaire
+        });
+
+        // Définir les en-têtes pour le téléchargement du fichier
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        res.setHeader('Content-Disposition', `attachment; filename="${path.basename(docxFileUrl)}"`);
+
+        // Piping du fichier DOCX vers le client
+        docxResponse.data.pipe(res).on('error', (err) => {
+            // console.error('Erreur lors de l\'envoi du fichier DOCX :', err);
+
+            res.status(500).send('Erreur lors de l\'envoi du fichier DOCX.');
+        });
+    } catch (error) {
+        // console.error('Erreur lors de l\'appel à l\'API FastAPI :', error);
+        res.status(500).send('Erreur lors de la conversion du fichier PDF en DOCX.');
+    }
+
+    // Supprimer les fichiers dans 'uploads' sauf 'stay.png' après 40 secondes
+    setTimeout(() => {
+        deleteFilesExceptStay();
+    }, 40000); // 40 secondes 
 });
 
-app.use('/upload', express.static(path.join(__dirname, 'upload')));
-
+// Lancer le serveur
 app.listen(port, () => {
-    console.log(`L'application tourne sur le port localhost:${port}`);
+    // console.log(`L'application tourne sur le port localhost:${port}`);
 });
