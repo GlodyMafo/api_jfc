@@ -66,7 +66,7 @@ app.post('/pdftoword', upload.single('pdf'), async (req, res) => {
         formData.append('file', fs.createReadStream(req.file.path));
 
         // Converting file with my python server
-        const response = await axios.post('http://localhost:8001/convert', formData, {
+        const response = await axios.post('https://api-jfc-pyth.onrender.com/convert', formData, {
             headers: {
                 ...formData.getHeaders(),
             },
@@ -77,7 +77,7 @@ app.post('/pdftoword', upload.single('pdf'), async (req, res) => {
         const docxFileUrl = response.data.docx_file;
         // console.log('Fichier DOCX disponible à :', docxFileUrl);
 
-        const docxResponse = await axios.get(`http://localhost:8001${docxFileUrl}`, {
+        const docxResponse = await axios.get(`https://api-jfc-pyth.onrender.com${docxFileUrl}`, {
             responseType: 'stream', // Pour traiter la réponse comme un flux binaire
         });
 
